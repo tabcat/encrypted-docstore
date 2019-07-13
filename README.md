@@ -1,7 +1,7 @@
 # encrypted-docstore
-create and mount encrypted docstores in the browser (requires webcrypto)
+create and mount encrypted orbit docstores in the browser (requires webcrypto)
 
-**DISCLAIMER: cryptography in this has been implemented by an amateur and has not been auditted. <br/>Please :fire:roast:fire: me in Issues if u find a vulnerability.**
+**DISCLAIMER: cryptography in this repo has been implemented by an amateur and has not been auditted. <br/>Please :fire:roast:fire: me in Issues if u find a vulnerability.**
 
 ## Usage
 install with npm:
