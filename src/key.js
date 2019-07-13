@@ -60,23 +60,23 @@ class Key {
 
     return new Key(cryptoKey)
   }
-  static async exportKey(cryptoKey) {
-    if (cryptoKey === undefined) {
-      throw new Error('cryptoKey must be defined')
+  static async exportKey(key) {
+    if (key === undefined) {
+      throw new Error('key must be defined')
     }
 
-    const cryptoKeyExport = await crypto.subtle.exportKey('raw', cryptoKey)
+    const rawKey = await crypto.subtle.exportKey('raw', key)
 
-    return cryptoKeyExport
+    return rawKey
   }
-  static async importKey(cryptoKeyExport) {
+  static async importKey(rawKey) {
     if (cryptoKeyAb === undefined) {
       throw new Error('cryptoKeyAb must be defined')
     }
 
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
-      cryptoKeyExport,
+      rawKey,
       { name:'AES-GCM' },
       true,
       ['encrypt', 'decrypt']

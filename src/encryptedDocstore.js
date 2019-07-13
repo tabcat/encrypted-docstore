@@ -46,7 +46,7 @@ class EncryptedDocstore extends EventEmitter {
     return `${encRoot}/${root}`
   }
   // use to determine address of encDocstore
-  static async determineEncAddress(orbit, dbConfig, key) {
+  static async determineEncDbAddress(orbit, dbConfig, key) {
     if (orbit === undefined || dbConfig === undefined || key === undefined) {
       throw new Error('orbit, dbConfig and key must be defined')
     }
@@ -101,13 +101,13 @@ class EncryptedDocstore extends EventEmitter {
   }
 
 // docstore operations
-  async get(key) {
-    if (key === undefined) {
-      throw new Error('key is undefined')
+  async get(_id) {
+    if (_id === undefined) {
+      throw new Error('_id is undefined')
     }
 
     return await Promise.all(
-      this.encrypted.get(key).map((doc) => this.key.decryptMsg(doc))
+      this.encrypted.get(_id).map((doc) => this._id.decryptMsg(doc))
     )
   }
 
