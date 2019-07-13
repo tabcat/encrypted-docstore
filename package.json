@@ -1,0 +1,16 @@
+{
+  "name": "@tabcat/encrypted-docstore",
+  "version": "0.0.1",
+  "description": "mount encrypted docstores with a key",
+  "main": "src/encryptedDocstore.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "orbit-db",
+    "encrypted",
+    "docstore"
+  ],
+  "author": "anderbs@tuta.io",
+  "license": "MIT"
+}
