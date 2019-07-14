@@ -3,7 +3,7 @@ create and mount encrypted orbit docstores in the browser (requires webcrypto)
 
 **DISCLAIMER: cryptography in this repo has been implemented by an amateur and has not been auditted. <br/>Please :fire:roast:fire: me in Issues if u find a vulnerability.**
 
-TODO: encapsulate the entire doc inside the ciphertext field, will need to change the get and query methods.
+TODO: encapsulate the \_id inside the ciphertext field, will need to change the get and query methods.
 
 ## Usage
 install with npm:
