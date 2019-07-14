@@ -3,6 +3,8 @@ create and mount encrypted orbit docstores in the browser (requires webcrypto)
 
 **DISCLAIMER: cryptography in this repo has been implemented by an amateur and has not been auditted. <br/>Please :fire:roast:fire: me in Issues if u find a vulnerability.**
 
+TODO: encapsulate the entire doc inside the ciphertext field, will need to change the get and query methods.
+
 ## Usage
 install with npm:
 ```
@@ -94,6 +96,10 @@ const encDocstore = await EncryptedDocstore.mount(docstore, key)
 >returns a bytes array that can be used as rawKey in EncDoc.importKey
 
 ### Instance Propterties:
+#### encDoc.encrypted
+> the orbit docstore being used as the encrypted docstore
+#### encDoc.key
+> an instance of the Key class from src/key.js
 #### encDoc.get(_id)
 see: https://github.com/orbitdb/orbit-db/blob/master/API.md#getkey-1
 
