@@ -13,7 +13,7 @@ function str2ab(str) {
   return buf;
 }
 
-const randomBytes = async (bytes) => await crypto.getRandomValues(new Uint8Array(bytes))
+const randomBytes = async (bytesLength) => await crypto.getRandomValues(new Uint8Array(bytesLength))
 
 const encDocFields = ['_id', 'ciphertext', 'iv']
 // returns a new object with only fields that will be encrypted
