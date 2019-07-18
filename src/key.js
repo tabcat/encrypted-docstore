@@ -94,11 +94,11 @@ class Key {
     iv = iv || await randomBytes(12)
     const algo = { ...this.key.algorithm, iv }
 
-    const _bytes = await crypto.subtle.encrypt(algo, this.key, bytes)
-    const ciphertext = ab2str(_bytes)
+    const cipherbytes = new Uint8Array(
+      await crypto.subtle.encrypt(algo, this.key, bytes)
+    )
 
-
-    return { ciphertext, bytes:_bytes, iv }
+    return { cipherbytes, iv }
   }
   async decrypt(bytes, iv) {
     if (bytes === undefined || iv === undefined) {
@@ -125,25 +125,20 @@ async function encryptDoc(doc) {
     throw new Error('doc must be defined')
   }
 
-  // makes new obj, stringifies and encodes only the encrypted fields
-  const bytes = str2ab(JSON.stringify(cipherSect(doc)))
-  const { ciphertext, iv } = await this.encrypt(bytes)
+  const bytes = str2ab(JSON.stringify(doc))
+  const { cipherbytes, iv } = await this.encrypt(bytes)
 
-  return { _id:doc._id, ciphertext, iv }
+  return { _id:`entry-${iv.join('')}`, cipherbytes, iv }
 }
 async function decryptDoc(encDoc) {
   if (encDoc === undefined) {
     throw new Error('encDoc must be defined')
   }
 
-  const bytes = str2ab(encDoc.ciphertext)
-  const decrypted = await this.decrypt(bytes, encDoc.iv)
-  // all fields within ciphertext doc field
+  const decrypted = await this.decrypt(encDoc.cipherbytes, encDoc.iv)
   const clearObj = JSON.parse(ab2str(decrypted))
 
-  // clearObj spread first because maybe someone adds iv and ciphertext fields
-  //  inside the ciphertext area for some weird reason and breaks something
-  return {  ...clearObj, ...encDoc }
+  return { internal:clearObj, external:encDoc }
 }
 
 module.exports = Key

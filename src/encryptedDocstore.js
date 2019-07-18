@@ -39,7 +39,7 @@ class EncryptedDocstore extends EventEmitter {
 
     const encRoot = bs58.encode(
       Buffer.from(
-        (await key.encrypt(decodedRoot, decodedRoot)).bytes
+        (await key.encrypt(decodedRoot, decodedRoot)).cipherbytes
       )
     )
 
@@ -101,44 +101,95 @@ class EncryptedDocstore extends EventEmitter {
   }
 
 // docstore operations
-  async get(_id) {
-    if (_id === undefined) {
-      throw new Error('_id is undefined')
+  async get(indexKey, caseSensitive = false) {
+    if (indexKey === undefined) {
+      throw new Error('indexKey is undefined')
     }
 
-    return await Promise.all(
-      this.encrypted.get(_id).map((doc) => this._id.decryptMsg(doc))
-    )
+    const indexBy = this.encrypted.options.indexBy
+
+    // code taken from orbit document store get method:
+    // https://github.com/orbitdb/orbit-db-docstore/blob/master/src/DocumentStore.js
+    indexKey = indexKey.toString()
+    const terms = indexKey.split(' ')
+    indexKey = terms.length > 1
+      ? replaceAll(indexKey, '.', ' ').toLowerCase()
+      : indexKey.toLowerCase()
+    const replaceAll = (str, search, replacement) =>
+      str.toString().split(search).join(replacement)
+    const search = (e) => {
+      if (terms.length > 1) {
+        return replaceAll(e, '.', ' ').toLowerCase().indexOf(indexKey) !== -1
+      }
+      return e.toLowerCase().indexOf(indexKey) !== -1
+    }
+
+    const filter = caseSensitive
+      ? (i) => i[indexBy].indexOf(indexKey) !== -1
+      : (i) => search(i[indexBy])
+
+    const records = this.encrypted.query(() => true)
+    const matches = await Promise.all(
+      records.map(encDoc => this.key.decryptMsg(encDoc).then(res => res.internal))
+    ).then(arr => arr.filter(filter))
+
+    return matches
   }
 
   async put(doc) {
     if (typeof doc !== 'object') {
       throw new Error('doc must have type of object')
     }
-    if (!doc._id) {
-      throw new Error('doc requires an _id field')
+    if (!doc[this.encrypted.options.indexBy]) {
+      throw new Error(`doc requires an ${this.encrypted.options.indexBy} field`)
     }
+
+    const indexBy = this.encrypted.options.indexBy
+    const records = this.encrypted.query(() => true)
+
+    // since real _id is encapsulated in cipherbytes field and external _id is
+    // random, we must delete the old entry by querying for the same id
+    await this.del(doc[indexBy])
 
     return await this.encrypted.put(await this.key.encryptMsg(doc))
   }
 
-  async del(key) {
-    return await this.encrypted.del(key)
+  async del(indexKey) {
+    if (indexKey === undefined) {
+      throw new Error('')
+    }
+
+    const indexBy = this.encrypted.options.indexBy
+    const records = this.encrypted.query(() => true)
+
+    const matches = await Promise.all(
+      records.map(encDoc => this.key.decryptMsg(encDoc))
+    ).then(arr => arr.filter(res => res.internal[indexBy] === indexKey))
+
+    if (matches.length > 1) {
+      console.error(`there was more than one entry with internal key ${indexKey}`)
+    }
+
+    // only return first
+    return Promise.all(
+      matches.map(res => this.encrypted.del(res.external[indexBy]))
+    ).then(arr => arr[0])
   }
 
-  async query(mapper) {
+  async query(mapper, options = {}) {
     if (mapper === undefined) {
       throw new Error('mapper was undefined')
     }
 
     // decrypts each doc before mapper recieves them
-    const encMapper = async (encDoc) => mapper(await this.key.decryptMsg(encDoc))
+    const encMapper = async (encDoc) =>
+      mapper(await this.key.decryptMsg(encDoc).then(res => res.internal))
     // calls the query with the higher order decrypting mapper
-    const encQuery = this.encrypted.query(encMapper)
+    const encQuery = this.encrypted.query(encMapper, options)
 
     return await Promise.all(
       encQuery.map((encDoc) => this.key.decryptMsg(encDoc))
-    )
+    ).then(arr => arr.map(res => res.internal))
   }
 
 }
