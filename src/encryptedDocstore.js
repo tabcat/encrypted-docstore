@@ -100,6 +100,13 @@ class EncryptedDocstore extends EventEmitter {
     return await Key.exportKey(...params)
   }
 
+// helpers
+  async decryptRecords(encryptedRecords) {
+    return await Promise.all(
+      encryptedRecords.map(encDoc => this.key.decryptMsg(encDoc))
+    )
+  }
+
 // docstore operations
   async get(indexKey, caseSensitive = false) {
     if (indexKey === undefined) {
@@ -128,49 +135,47 @@ class EncryptedDocstore extends EventEmitter {
       ? (i) => i[indexBy].indexOf(indexKey) !== -1
       : (i) => search(i[indexBy])
 
-    const records = this.encrypted.query(() => true)
-    const matches = await Promise.all(
-      records.map(encDoc => this.key.decryptMsg(encDoc).then(res => res.internal))
-    ).then(arr => arr.filter(filter))
+    const records = await this.decryptRecords(this.encrypted.query(() => true))
 
-    return matches
+    return await Promise.all(records.map(res => res.internal).filter(filter))
   }
 
   async put(doc) {
     if (typeof doc !== 'object') {
       throw new Error('doc must have type of object')
     }
-    if (!doc[this.encrypted.options.indexBy]) {
-      throw new Error(`doc requires an ${this.encrypted.options.indexBy} field`)
-    }
 
     const indexBy = this.encrypted.options.indexBy
-    const records = this.encrypted.query(() => true)
+    if (!doc[this.encrypted.options.indexBy]) {
+      throw new Error(`doc requires an ${indexBy} field`)
+    }
 
     // since real _id is encapsulated in cipherbytes field and external _id is
     // random, we must delete the old entry by querying for the same id
-    await this.del(doc[indexBy])
+    try { await this.del(doc[indexBy]) } catch(e) {}
 
     return await this.encrypted.put(await this.key.encryptMsg(doc))
   }
 
   async del(indexKey) {
     if (indexKey === undefined) {
-      throw new Error('')
+      throw new Error('indexKey must be defined')
     }
 
     const indexBy = this.encrypted.options.indexBy
-    const records = this.encrypted.query(() => true)
+    const records = await this.decryptRecords(this.encrypted.query(() => true))
 
-    const matches = await Promise.all(
-      records.map(encDoc => this.key.decryptMsg(encDoc))
-    ).then(arr => arr.filter(res => res.internal[indexBy] === indexKey))
+    const matches = records.filter(res => res.internal[indexBy] === indexKey)
 
+    // if a deletion fails this will clean it up old records
     if (matches.length > 1) {
       console.error(`there was more than one entry with internal key ${indexKey}`)
     }
+    if (matches.length === 0) {
+      throw new Error(`No entry with key '${indexKey}' in the database`)
+    }
 
-    // only return first
+    // only return first deletion to keep same api as docstore
     return Promise.all(
       matches.map(res => this.encrypted.del(res.external[indexBy]))
     ).then(arr => arr[0])
@@ -181,15 +186,26 @@ class EncryptedDocstore extends EventEmitter {
       throw new Error('mapper was undefined')
     }
 
-    // decrypts each doc before mapper recieves them
-    const encMapper = async (encDoc) =>
-      mapper(await this.key.decryptMsg(encDoc).then(res => res.internal))
-    // calls the query with the higher order decrypting mapper
-    const encQuery = this.encrypted.query(encMapper, options)
+    const fullOp = options.fullOp || false
+    const decryptFullOp = async(entry) => ({
+      ...entry,
+      payload: {
+        ...entry.payload,
+        value:await this.key.decryptMsg(entry.payload.value).then(res => res.internal),
+      },
+    })
 
-    return await Promise.all(
-      encQuery.map((encDoc) => this.key.decryptMsg(encDoc))
-    ).then(arr => arr.map(res => res.internal))
+    const index = this.encrypted._index
+    const indexGet = fullOp
+      ? async(_id) => decryptFullOp(index._index[_id])
+      : async(_id) => index._index[_id]
+        ? await this.key.decryptMsg(index._index[_id].payload.value)
+          .then(res => res.internal)
+        : null
+    const indexKeys = Object.keys(index._index)
+
+    return Promise.all(indexKeys.map(key => indexGet(key)))
+      .then(arr => arr.filter(mapper))
   }
 
 }
