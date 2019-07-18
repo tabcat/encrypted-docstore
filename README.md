@@ -3,7 +3,6 @@ create and mount encrypted orbit docstores in the browser (requires webcrypto)
 
 **DISCLAIMER: cryptography in this repo has been implemented by an amateur and has not been auditted. <br/>Please :fire:roast:fire: me in Issues if u find a vulnerability.**
 
-TODO: encapsulate the \_id inside the ciphertext field, will need to change the get and query methods.
 
 ## Usage
 install with npm:
@@ -34,14 +33,14 @@ const encDbAddress = await EncryptedDocstore.determineEncDbAddress(orbit, dbConf
 const docstore = await orbit.docs(encDbAddress)
 const encDocstore = await EncryptedDocstore.mount(docstore, key)
 
-// get,put, del, query all exposed on encDocstore and return results VERY similar orbitDocstore 
+// get,put, del, query all exposed on encDocstore and returned results should be identical to docstore methods
 
 ```
 
 ## API <br/>
 >EncDoc = EncryptedDocstore 
 
-### Static Properties:
+### Static Methods:
 #### EncDoc.mount(docstore, key)
 >mount an encrypted docstore
 
@@ -100,26 +99,32 @@ const encDocstore = await EncryptedDocstore.mount(docstore, key)
 > the orbit docstore being used as the encrypted docstore
 #### encDoc.key
 > an instance of the Key class from src/key.js
-#### encDoc.get(_id)
+
+
+### Instance Methods:
+> get, put, del, query all work by encapsulating the field it is indexed by (default is \_id) and should behave the same
+#### encDoc.get(key)
 see: https://github.com/orbitdb/orbit-db/blob/master/API.md#getkey-1
 
-differences:
-  - returns doc with EncDoc doc properties ciphertext and iv, do not use these property names for your docs they will be overwritten
-
+no visible differences
 #### encDoc.put(doc)
 >see: https://github.com/orbitdb/orbit-db/blob/master/API.md#putdoc
 
-differences:
-  - returns doc with EncDoc doc properties ciphertext and iv, do not use these property names for your docs they will be overwritten
-  - doc is taken, properties than are not _id, ciphertext or iv are grabbed and encrypted to make the new ciphertext and iv
-#### encDoc.del(_id)
+no visible differences
+#### encDoc.del(key)
 >see: https://github.com/orbitdb/orbit-db/blob/master/API.md#delkey-1
 
-no differences
+no visible differences
 #### encDoc.query(mapper)
 >see: https://github.com/orbitdb/orbit-db/blob/master/API.md#querymapper
 
-no visisble differences:
-  - mapper is fed unencrypted docs like those returned from the get method
+differences:
+  - when calling with option fullOp: 
+    + the payload.value is the decrypted/decapsulated doc. 
+    + the payload.key which would usually match the payload.value[indexBy] field (indexBy default is '\_id')
+    does not.
+    + anything in the fullOp entry relating to hashing the real payload.value will not match the payload.value
+  - when not calling with option fullOp:
+    + no visible differences
 
 
