@@ -1,6 +1,6 @@
 {
   "name": "@tabcat/encrypted-docstore",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "mount encrypted docstores with a key",
   "main": "src/encryptedDocstore.js",
   "scripts": {
