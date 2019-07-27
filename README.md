@@ -107,7 +107,8 @@ const encDocstore = await EncryptedDocstore.mount(docstore, key)
 #### encDoc.get(key)
 see: https://github.com/orbitdb/orbit-db/blob/master/API.md#getkey-1
 
-no visible differences
+differences:
+  - is async function
 #### encDoc.put(doc)
 >see: https://github.com/orbitdb/orbit-db/blob/master/API.md#putdoc
 
@@ -120,6 +121,7 @@ no visible differences
 >see: https://github.com/orbitdb/orbit-db/blob/master/API.md#querymapper
 
 differences:
+  - is async function
   - when calling with option fullOp: 
     + the payload.value is the decrypted/decapsulated doc. 
     + the payload.key which would usually match the payload.value[indexBy] field (indexBy default is '\_id')
