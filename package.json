@@ -1,7 +1,11 @@
 {
   "name": "@tabcat/encrypted-docstore",
-  "version": "1.0.0",
-  "description": "mount encrypted docstores with a key",
+  "version": "1.0.1",
+  "description": "mount encrypted docstores with a key",	
+	"repository": {
+    "type": "git",
+    "url": "https://github.com/tabcat/encrypted-docstore.git"
+  },
   "main": "src/encryptedDocstore.js",
   "keywords": [
     "orbit-db",
