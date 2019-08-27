@@ -6,11 +6,11 @@ const Key = require('./key')
 
 class EncryptedDocstore {
   constructor(encryptedDocstore, key) {
-    if (!isDefined(encryptedDocstore)) throw new Error('encryptedDocstore must be defined')
-    if (!isDefined(key)) throw new Error('key must be defined')
+    if (!encryptedDocstore) throw new Error('encryptedDocstore must be defined')
+    if (!key) throw new Error('key must be defined')
     this._docstore = encryptedDocstore
-    this.indexBy = this.docstore.options.indexBy
     this._key = key
+    this.indexBy = this._docstore.options.indexBy
   }
 
   // docstore: an instance of orbitdb docstore with name from determineEncDbName
@@ -191,3 +191,4 @@ class EncryptedDocstore {
 }
 
 module.exports = EncryptedDocstore
+

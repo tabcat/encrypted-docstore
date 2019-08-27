@@ -28,7 +28,7 @@ const cipherSect = (doc) => Object.keys(doc)
 
 class Key {
   constructor(cryptoKey) {
-    this.key = cryptoKey
+    this.cryptoKey = cryptoKey
   }
 
   static async genKey(options = {}) {
@@ -74,8 +74,8 @@ class Key {
   }
 
   static async importKey(rawKey) {
-    if (cryptoKeyAb === undefined) {
-      throw new Error('cryptoKeyAb must be defined')
+    if (rawKey === undefined) {
+      throw new Error('rawKey must be defined')
     }
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
@@ -93,9 +93,9 @@ class Key {
     }
     // 12bytes is recommended for GCM for computational efficiencies
     iv = iv || await randomBytes(12)
-    const algo = { ...this.key.algorithm, iv }
+    const algo = { ...this.cryptoKey.algorithm, iv }
     const cipherbytes = new Uint8Array(
-      await crypto.subtle.encrypt(algo, this.key, bytes)
+      await crypto.subtle.encrypt(algo, this.cryptoKey, bytes)
     )
     return { cipherbytes, iv }
   }
@@ -103,8 +103,8 @@ class Key {
     if (bytes === undefined || iv === undefined) {
       throw new Error('bytes and iv must be defined')
     }
-    const algo = { ...this.key.algorithm, iv }
-    return await crypto.subtle.decrypt(algo, this.key, bytes)
+    const algo = { ...this.cryptoKey.algorithm, iv }
+    return await crypto.subtle.decrypt(algo, this.cryptoKey, bytes)
   }
 
   async encryptMsg(msg) {
@@ -121,17 +121,24 @@ async function encryptDoc(doc) {
     throw new Error('doc must be defined')
   }
   const bytes = str2ab(JSON.stringify(doc))
-  const { cipherbytes, iv } = await this.encrypt(bytes)
-  return { _id:`entry-${iv.join('')}`, cipherbytes, iv }
+  const enc = await this.encrypt(bytes)
+  const prepUint = (uint) => Object.values(uint)
+  const cipherbytes = prepUint(enc.cipherbytes)
+  const iv = prepUint(enc.iv)
+  return { _id:`entry-${iv.join('')}`, cipherbytes, iv, }
 }
 
 async function decryptDoc(encDoc) {
   if (encDoc === undefined) {
     throw new Error('encDoc must be defined')
   }
-  const decrypted = await this.decrypt(encDoc.cipherbytes, encDoc.iv)
+  const deserializeUint = (obj) => new Uint8Array(Object.values(obj))
+  const cipherbytes = deserializeUint(encDoc.cipherbytes)
+  const iv = deserializeUint(encDoc.iv)
+  const decrypted = await this.decrypt(cipherbytes, iv, )
   const clearObj = JSON.parse(ab2str(decrypted))
   return { internal:clearObj, external:encDoc }
 }
 
 module.exports = Key
+
