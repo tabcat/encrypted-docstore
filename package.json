@@ -18,6 +18,8 @@
   "author": "anderbs@tuta.io",
   "license": "MIT",
   "dependencies": {
-    "node-webcrypto-ossl": "^1.0.48"
+    "bs58": "^4.0.1",
+    "node-webcrypto-ossl": "^1.0.48",
+    "safe-buffer": "^5.2.0"
   }
 }
