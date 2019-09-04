@@ -1,5 +1,6 @@
 
 'use strict'
+const webcrypto = require('./node-webcrypto-ossl')
 
 function ab2str(buf) {
   return String.fromCharCode.apply(null, new Uint16Array(buf));
@@ -14,7 +15,7 @@ function str2ab(str) {
 }
 
 const randomBytes = async (bytesLength) =>
-  await crypto.getRandomValues(new Uint8Array(bytesLength))
+  await webcrypto.get().getRandomValues(new Uint8Array(bytesLength))
 
 const encDocFields = ['_id', 'ciphertext', 'iv']
 // returns a new object with only fields that will be encrypted
@@ -39,19 +40,19 @@ class Key {
     return key
   }
 
-  static async deriveKey(bytes, salt, length = 128, purpose = 'encryptedDocstore') {
+  static async deriveKey(bytes, salt, length = 128, purpose = 'encrypted-docstore') {
     if (bytes === undefined || salt === undefined) {
       throw new Error('bytes and salt must be defined')
     }
     if (typeof purpose !== 'string') throw new Error('purpose must have type string')
-    const hkdf = await crypto.subtle.importKey(
+    const hkdf = await webcrypto.get().subtle.importKey(
       'raw',
       bytes,
       { name:"HKDF" },
       false,
       ["deriveKey"],
     )
-    const cryptoKey = await crypto.subtle.deriveKey(
+    const cryptoKey = await webcrypto.get().subtle.deriveKey(
       {
         name: 'HKDF',
         hash: { name:'SHA-256' },
@@ -70,14 +71,14 @@ class Key {
     if (key === undefined) {
       throw new Error('key must be defined')
     }
-    return await crypto.subtle.exportKey('raw', key)
+    return await webcrypto.get().subtle.exportKey('raw', key)
   }
 
   static async importKey(rawKey) {
     if (rawKey === undefined) {
       throw new Error('rawKey must be defined')
     }
-    const cryptoKey = await crypto.subtle.importKey(
+    const cryptoKey = await webcrypto.get().subtle.importKey(
       'raw',
       rawKey,
       { name:'AES-GCM' },
@@ -95,7 +96,7 @@ class Key {
     iv = iv || await randomBytes(12)
     const algo = { ...this.cryptoKey.algorithm, iv }
     const cipherbytes = new Uint8Array(
-      await crypto.subtle.encrypt(algo, this.cryptoKey, bytes)
+      await webcrypto.get().subtle.encrypt(algo, this.cryptoKey, bytes)
     )
     return { cipherbytes, iv }
   }
@@ -104,7 +105,7 @@ class Key {
       throw new Error('bytes and iv must be defined')
     }
     const algo = { ...this.cryptoKey.algorithm, iv }
-    return await crypto.subtle.decrypt(algo, this.cryptoKey, bytes)
+    return await webcrypto.get().subtle.decrypt(algo, this.cryptoKey, bytes)
   }
 
   async encryptMsg(msg) {
@@ -141,4 +142,3 @@ async function decryptDoc(encDoc) {
 }
 
 module.exports = Key
-

@@ -1,17 +1,23 @@
 {
   "name": "@tabcat/encrypted-docstore",
-  "version": "1.0.2",
-  "description": "mount encrypted docstores with a key",	
-	"repository": {
+  "version": "1.0.3",
+  "description": "mount encrypted docstores with a key",
+  "repository": {
     "type": "git",
     "url": "https://github.com/tabcat/encrypted-docstore.git"
   },
-  "main": "src/encryptedDocstore.js",
+  "main": "src/index.js",
+  "browser": {
+    "./src/node-webcrypto-ossl.js": "./src/webcrypto.js"
+  },
   "keywords": [
     "orbit-db",
     "encrypted",
     "docstore"
   ],
   "author": "anderbs@tuta.io",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "node-webcrypto-ossl": "^1.0.48"
+  }
 }
