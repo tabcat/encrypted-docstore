@@ -45,55 +45,55 @@ const encDocstore = await EncryptedDocstore.mount(docstore, key)
 #### EncDoc.mount(docstore, key)
 >mount an encrypted docstore
 
-**docstore:** orbit docstore made with name from EncDoc.determineEncDbName or address from EncDoc.determineEncDbAddress<br/>
-**key:** instance of key from src/key.js, made with EncDoc.
+*docstore:* orbit docstore made with name from EncDoc.determineEncDbName or address from EncDoc.determineEncDbAddress<br/>
+*key:* instance of key from src/key.js, made with EncDoc.
 
->returns a promise that resolves to an instance of EncDoc
+returns a promise that resolves to an instance of EncDoc
 #### EncDoc.determineEncDbName(orbit, dbConfig, key)
 >determine the EncDoc name for a docstore config and key
 
-**orbit:** an instance of OrbitDB<br/>
-**dbConfig:** an object containing name, type and options for an orbit store settings<br/>
-**key:** instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
+*orbit:* an instance of OrbitDB<br/>
+*dbConfig:* an object containing name, type and options for an orbit store settings<br/>
+*key:* instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
 
->returns a promise that resolves to a string made of:<br/> 
->`<encrypted original config address root>/<original config address root>` both fields are base58 encoded
+returns a promise that resolves to a string made of:<br/> 
+`<encrypted original config address root>/<original config address root>` both fields are base58 encoded
 #### EncDoc.determineEncDbAddress(orbit, dbConfig, key)
 >determine the EncDoc address for a docstore config and key
 
-**orbit:** an instance of OrbitDB<br/>
-**dbConfig:** an object containing name, type and options for an orbit store settings<br/>
-**key:** instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
+*orbit:* an instance of OrbitDB<br/>
+*dbConfig:* an object containing name, type and options for an orbit store settings<br/>
+*key:* instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
 
->returns a promise that resolves to an instance of orbit address
+returns a promise that resolves to an instance of orbit address
 #### EncDoc.keyCheck(address, key)
 >check if a key is used for this db address 
 
-**address:** instance of orbit address<br/>
-**key:** instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
+*address:* instance of orbit address<br/>
+*key:* instance of Key from src/key.js, made with EncDoc.deriveKey or EncDoc.importKey<br/>
 
->returns promise that resolves to a boolean
+returns promise that resolves to a boolean
 #### EncDoc.deriveKey(bytes, salt, [length, [purpose]])
 >derive instance of Key from bytes and salt
 
-**bytes:** bytes array made from randomness or a strong password<br/>
-**salt:** bytes array to be used as salt for deriving the key, recommend using 128bit random value<br/>
-**length:** number representing cipherblock size, defaults to 128<br/>
-**purpose:** string that is used in generating the key somehow<br/>
+*bytes:* bytes array made from randomness or a strong password<br/>
+*salt:* bytes array to be used as salt for deriving the key, recommend using 128bit random value<br/>
+*length:* number representing cipherblock size, defaults to 128<br/>
+*purpose:* string that is used in generating the key somehow<br/>
 
->returns an instance of Key
+returns an instance of Key
 #### EncDoc.importKey(rawKey)
 >import a key from raw bytes from EncDoc.exportKey
 
-**rawKey:** bytes array from EncDoc.exportKey
+*rawKey:* bytes array from EncDoc.exportKey
 
->returns an instance of Key
+returns an instance of Key
 #### EncDoc.exportKey(key)
 >export a key
 
-**key:** instance of Key
+*key:* instance of Key
 
->returns a bytes array that can be used as rawKey in EncDoc.importKey
+returns a bytes array that can be used as rawKey in EncDoc.importKey
 
 ### Instance Propterties:
 #### encDoc.encrypted
@@ -101,9 +101,8 @@ const encDocstore = await EncryptedDocstore.mount(docstore, key)
 #### encDoc.key
 > an instance of the Key class from src/key.js
 
-
 ### Instance Methods:
-> get, put, del, query all work by encapsulating the field it is indexed by (default is \_id) and should behave the same
+  - get, put, del, query all work by encapsulating the field it is indexed by (default is \_id) and should behave the same
 #### encDoc.get(key)
 see: https://github.com/orbitdb/orbit-db/blob/master/API.md#getkey-1
 
@@ -129,5 +128,3 @@ differences:
     + anything in the fullOp entry relating to hashing the real payload.value will not match the payload.value
   - when not calling with option fullOp:
     + no visible differences
-
-
