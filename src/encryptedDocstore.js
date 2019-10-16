@@ -2,111 +2,136 @@
 'use strict'
 const bs58 = require('bs58')
 const Buffer = require('safe-buffer').Buffer
-const Key = require('./key')
+const { aes, util } = require('@tabcat/peer-account-crypto')
+
+// deterministic iv
+// used as iv when encrypting dbAddr root for encAddr
+const dIv = util.str2ab('encrypted-docstore')
+
+function encryptDoc (aesKey, indexBy) {
+  return async (doc) => {
+    try {
+      if (doc === undefined) {
+        throw new Error('doc must be defined')
+      }
+      const bytes = util.str2ab(JSON.stringify(doc))
+      const enc = await aesKey.encrypt(bytes)
+      const cipherbytes = Object.values(enc.cipherbytes)
+      const iv = Object.values(enc.iv)
+      return { [indexBy]: `entry-${iv.join('.')}`, cipherbytes, iv }
+    } catch (e) {
+      console.error(e)
+      console.error('failed to encrypt doc')
+      return undefined
+    }
+  }
+}
+
+function decryptDoc (aesKey) {
+  return async (encDoc) => {
+    try {
+      if (encDoc === undefined) {
+        throw new Error('encDoc must be defined')
+      }
+      const cipherbytes = new Uint8Array(encDoc.cipherbytes)
+      const iv = new Uint8Array(encDoc.iv)
+      const decrypted = await aesKey.decrypt(cipherbytes, iv)
+      const doc = JSON.parse(util.ab2str(decrypted.buffer))
+      return { internal: doc, external: encDoc }
+    } catch (e) {
+      console.error(e)
+      console.error('failed to decrypt doc')
+      return undefined
+    }
+  }
+}
+
+function decryptDocs (aesKey) {
+  const decrypt = decryptDoc(aesKey)
+  return async (encDocs) => {
+    const docs = await Promise.all(encDocs.map(encDoc => decrypt(encDoc)))
+    return docs.filter(t => t) // prune undefined
+  }
+}
 
 class EncryptedDocstore {
-  constructor(encryptedDocstore, key) {
-    if (!encryptedDocstore) throw new Error('encryptedDocstore must be defined')
-    if (!key) throw new Error('key must be defined')
-    this._docstore = encryptedDocstore
-    this._key = key
-    this.indexBy = this._docstore.options.indexBy
+  constructor (docstore, aesKey) {
+    if (!docstore) throw new Error('docstore must be defined')
+    if (!aesKey) throw new Error('aesKey must be defined')
+    this._docstore = docstore
+    this._aesKey = aesKey
+    this._indexBy = this._docstore.options.indexBy
   }
 
-  // docstore: an instance of orbitdb docstore with name from determineEncDbName
-  //  (get this by opening a docstore by address or creating one with a config)
-  // key: aes cryptoKey (get this from this.deriveKey)
-  static async mount(docstore, key) {
-    if (key === undefined || docstore === undefined) {
-      throw new Error('key and encryptedDocstore must be defined')
+  static async mount (docstore, aesKey) {
+    if (!docstore || !aesKey) {
+      throw new Error('docstore and aesKey must be defined')
     }
-    // if keyCheck fails throw
-    if (!(await this.keyCheck(docstore.address, key))) {
+    if (!await this.keyCheck(docstore.address, aesKey)) {
       throw new Error('keyCheck failed while trying to mount store')
     }
-    return new EncryptedDocstore(docstore, key)
+    return new EncryptedDocstore(docstore, aesKey)
   }
 
-  // use to get name of encDocstore for creating the docstore
-  static async determineEncDbName(orbitdb, dbConfig, key) {
-    if (orbitdb === undefined || dbConfig === undefined || key === undefined) {
-      throw new Error('orbitdb, dbConfig and key must be defined')
-    }
-    const { name, type, options } = dbConfig
-    const root = (await orbitdb.determineAddress(name, type, options)).root
-    const decodedRoot = bs58.decode(root)
-    const encRoot = bs58.encode(
-      Buffer.from(
-        (await key.encrypt(decodedRoot, decodedRoot)).cipherbytes
-      )
-    )
-
-    return `${encRoot}/${root}`
-  }
-
-  // use to determine address of encDocstore
-  static async determineEncDbAddress(orbitdb, dbConfig, key) {
-    if (orbitdb === undefined || dbConfig === undefined || key === undefined) {
-      throw new Error('orbitdb, dbConfig and key must be defined')
+  // use to determine address of the docstore to be used for encryption
+  static async determineAddress (orbitdb, dbConfig, aesKey) {
+    if (!orbitdb || !dbConfig || !aesKey) {
+      throw new Error('orbitdb, dbConfig and aesKey must be defined')
     }
     if (dbConfig.type !== 'docstore') {
       throw new Error('dbConfig type must be docstore')
     }
-    const encDbName = await this.determineEncDbName(orbitdb, dbConfig, key)
-    return await orbitdb.determineAddress(encDbName, dbConfig.type, dbConfig.options)
+    if (!dbConfig.name) throw new Error('')
+    const { name, type, options } = dbConfig
+    const root = (await orbitdb.determineAddress(name, type, options)).root
+    const decodedRoot = bs58.decode(root)
+    try {
+      const encRoot = bs58.encode(Buffer.from(
+        (await aesKey.encrypt(decodedRoot, dIv)).cipherbytes
+      ))
+      const encName = `${encRoot}/${name}`
+      return orbitdb.determineAddress(encName, type, options)
+    } catch (e) {
+      console.error(e)
+      throw new Error('failed to determine address')
+    }
   }
 
-  static async keyCheck(address, key) {
-    if (address === undefined || key === undefined) {
-      throw new Error('address and key must be defined')
+  // encAddr is whats returned from this.determineAddress
+  // it is an instance of orbitdb's address
+  static async keyCheck (encAddr, aesKey) {
+    if (!encAddr || !aesKey) {
+      throw new Error('encAddr and aesKey must be defined')
     }
-    const [ encRoot, root ] = address.path.split('/')
-    const decodedEncRoot = bs58.decode(encRoot)
-    // d for deterministic
-    // probably the weakest part of the encryptedDocstore to precomputed tables.
-    // weakness is related to there being basically no salt so attacker needs
-    //  a table with an entry of every encrypted original root from encrypting every
-    //  every likely original root with every possible aes-gcm key to know your key?
-    // seems like a lot but targeting specific orbitdb stores would require only
-    //  finding every encrypted original root by encrypting one orignal root with
-    //  every possible aes-gcm key (if the amateur cryptographer in me is correct)
-    // hopefully i am correct in thinking this is adequate security for now
-    //  if the bytes deriving the aes key are random enough
-    const dIv = bs58.decode(root)
+    const encRoot = encAddr.path.split('/')[0]
+    if (!encRoot) throw new Error('invalid encrypted docstore address')
     try {
-      const decrypted = await key.decrypt(decodedEncRoot, dIv)
-      return bs58.encode(Buffer.from(decrypted)) === root
-    } catch(e) {
-      console.error(e)
+      await aesKey.decrypt(bs58.decode(encRoot), dIv)
+      return true
+    } catch (e) {
       return false
     }
   }
 
-// cryptographic opterations imported from ./key.js
-  // creates an AES key that can be used for an encryptedDocstore
-  // require bytes source to have sufficient entropy when implementing
-  static async genKey(...params) {
-    return await Key.genKey(...params)
-  }
-  static async deriveKey(...params) {
-    return await Key.deriveKey(...params)
-  }
-  static async importKey(...params) {
-    return await Key.importKey(...params)
-  }
-  static async exportKey(...params) {
-    return await Key.exportKey(...params)
+  // creates an aesKey that can be used for an encryptedDocstore
+  static async generateKey (...params) {
+    return aes.generateKey(...params)
   }
 
-// helpers
-  async decryptRecords(encryptedRecords) {
-    return await Promise.all(
-      encryptedRecords.map(encDoc => this._key.decryptMsg(encDoc))
-    )
+  static async deriveKey (...params) {
+    return aes.deriveKey(...params)
   }
 
-// docstore operations
-  async get(indexKey, caseSensitive = false) {
+  static async importKey (...params) {
+    return aes.importKey(...params)
+  }
+
+  static async exportKey (...params) {
+    return aes.exportKey(...params)
+  }
+
+  // docstore operations
+  async get (indexKey, caseSensitive = false) {
     if (indexKey === undefined) {
       throw new Error('indexKey is undefined')
     }
@@ -114,11 +139,11 @@ class EncryptedDocstore {
     // https://github.com/orbitdb/orbit-db-docstore/blob/master/src/DocumentStore.js
     indexKey = indexKey.toString()
     const terms = indexKey.split(' ')
+    const replaceAll = (str, search, replacement) =>
+      str.toString().split(search).join(replacement)
     indexKey = terms.length > 1
       ? replaceAll(indexKey, '.', ' ').toLowerCase()
       : indexKey.toLowerCase()
-    const replaceAll = (str, search, replacement) =>
-      str.toString().split(search).join(replacement)
     const search = (e) => {
       if (terms.length > 1) {
         return replaceAll(e, '.', ' ').toLowerCase().indexOf(indexKey) !== -1
@@ -126,69 +151,80 @@ class EncryptedDocstore {
       return e.toLowerCase().indexOf(indexKey) !== -1
     }
     const filter = caseSensitive
-      ? (i) => i[this.indexBy].indexOf(indexKey) !== -1
-      : (i) => search(i[this.indexBy])
-    const records = await this.decryptRecords(this._docstore.query(() => true))
-    return await Promise.all(records.map(res => res.internal).filter(filter))
+      ? (i) => i[this._indexBy].indexOf(indexKey) !== -1
+      : (i) => search(i[this._indexBy])
+
+    const docs =
+      await decryptDocs(this._aesKey)(this._docstore.query(() => true))
+    return Promise.all(docs.map(res => res.internal).filter(filter))
   }
 
-  async put(doc) {
+  async put (doc) {
     if (typeof doc !== 'object') {
       throw new Error('doc must have type of object')
     }
-    if (!doc[this.indexBy]) {
-      throw new Error(`doc requires an ${this.indexBy} field`)
+    if (!doc[this._indexBy]) {
+      throw new Error(`doc requires an ${this._indexBy} field`)
     }
     // since real _id is encapsulated in cipherbytes field and external _id is
     // random, we must delete the old entry by querying for the same id
-    try { await this.del(doc[this.indexBy]) } catch(e) {}
-    return await this._docstore.put(await this._key.encryptMsg(doc))
+    try { await this.del(doc[this._indexBy]) } catch (e) {}
+    const encDoc = await encryptDoc(this._aesKey, this._indexBy)(doc)
+    if (!encDoc) throw new Error('failed to encrypt doc')
+    return this._docstore.put(encDoc)
   }
 
-  async del(indexKey) {
+  async del (indexKey) {
     if (indexKey === undefined) {
       throw new Error('indexKey must be defined')
     }
-    const records = await this.decryptRecords(this._docstore.query(() => true))
-    const matches = records.filter(res => res.internal[this.indexBy] === indexKey)
-    // if a deletion fails this will clean it up old records
+    const docs =
+      await decryptDocs(this._aesKey)(this._docstore.query(() => true))
+    const matches = docs.filter(res => res.internal[this._indexBy] === indexKey)
     if (matches.length > 1) {
-      console.error(`there was more than one entry with internal key ${indexKey}`)
+      console.error(
+        `there was more than one entry with internal key: ${indexKey}`
+      )
     }
     if (matches.length === 0) {
-      throw new Error(`No entry with key '${indexKey}' in the database`)
+      throw new Error(`No entry with key: '${indexKey}' in the database`)
     }
+    // if a deletion failed this will clean it up old docs
     // only return first deletion to keep same api as docstore
     return Promise.all(
-      matches.map(res => this._docstore.del(res.external[this.indexBy]))
+      matches.map(res => this._docstore.del(res.external[this._indexBy]))
     ).then(arr => arr[0])
   }
 
-  async query(mapper, options = {}) {
-    if (mapper === undefined) {
-      throw new Error('mapper was undefined')
+  async query (mapper, options = {}) {
+    if (mapper === undefined) throw new Error('mapper was undefined')
+    if (typeof mapper !== 'function') throw new Error('mapper must be function')
+    const decrypt = decryptDoc(this._aesKey)
+    const decryptFullOp = async (entry) => {
+      const doc = await decrypt(entry.payload.value).then(res => res.internal)
+      return doc
+        ? {
+          ...entry,
+          payload: {
+            ...entry.payload,
+            key: doc[this._indexBy],
+            value: doc
+          }
+        }
+        : undefined
     }
-    const fullOp = options.fullOp || false
-    const decryptFullOp = async(entry) => ({
-      ...entry,
-      payload: {
-        ...entry.payload,
-        value:await this._key.decryptMsg(entry.payload.value).then(res => res.internal),
-      },
-    })
     const index = this._docstore._index
-    const indexGet = fullOp
-      ? async(_id) => decryptFullOp(index._index[_id])
-      : async(_id) => index._index[_id]
-        ? await this._key.decryptMsg(index._index[_id].payload.value)
+    const indexGet = options.fullOp || false
+      ? async (_id) => decryptFullOp(index._index[_id])
+      : async (_id) => index._index[_id]
+        ? decrypt(index._index[_id].payload.value)
           .then(res => res.internal)
         : null
     const indexKeys = Object.keys(index._index)
     return Promise.all(indexKeys.map(key => indexGet(key)))
-      .then(arr => arr.filter(mapper))
+      // remove undefined docs before handing to mapper
+      .then(arr => arr.filter(t => t).filter(mapper))
   }
-
 }
 
 module.exports = EncryptedDocstore
-
