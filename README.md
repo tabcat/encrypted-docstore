@@ -5,6 +5,10 @@ create and mount encrypted [orbit-db](https://github.com/orbitdb/orbit-db/) docs
 
 NOTE: *should* work in node but haven't tested at all 
 
+TODO: </br>
+extend the docstore instead of wrap it. </br>
+make every entry iv deterministic? based off anything unique besides orbit id and clock with the goal of having duplicate entries from different nodes collapse.
+
 ## Usage
 install with npm:
 ```
