@@ -27,8 +27,8 @@ const aesKey = EncryptedDocstore.generateKey()
 const dbConfig = { name:'asdf', type:'docstore', options: {} }
 const encAddr = await EncryptedDocstore.determineAddress(orbitdb, dbConfig, aesKey)
 const docstore = await orbitdb.docs(encAddr, dbConfig.options)
-const encDocstore = await EncryptedDocstore.mount(docstore, key)
 
+const encDocstore = await EncryptedDocstore.mount(docstore, aesKey)
 // get,put, del, query all exposed on encDocstore and returned results should be identical to docstore methods
 
 ```
