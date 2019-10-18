@@ -16,10 +16,7 @@
     "test": "mocha"
   },
   "standard": {
-    "env": "mocha",
-    "ignore": [
-      "test/**"
-    ]
+    "env": "mocha"
   },
   "author": "anderbs@tuta.io",
   "license": "MIT",
@@ -29,8 +26,9 @@
     "safe-buffer": "^5.2.0"
   },
   "devDependencies": {
-    "@tabcat/ipfs-bundle-t": "0.0.5",
+    "@tabcat/ipfs-bundle-t": "0.0.6",
     "mocha": "^6.2.1",
-    "orbit-db": "^0.22.0"
+    "orbit-db": "^0.22.0",
+    "wtfnode": "^0.8.0"
   }
 }

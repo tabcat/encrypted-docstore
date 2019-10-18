@@ -5,6 +5,9 @@ const EncDocstore = require('../src/encryptedDocstore')
 const Ipfs = require('@tabcat/ipfs-bundle-t')
 const OrbitDB = require('orbit-db')
 const crypto = require('@tabcat/peer-account-crypto')
+const wtf = require('wtfnode')
+
+wtf.setLogger('info', console.log)
 
 describe('EncryptedDocstore', function () {
   this.timeout(30000)
@@ -23,14 +26,23 @@ describe('EncryptedDocstore', function () {
 
   before(async () => {
     ipfs = await new Promise((resolve, reject) => {
-      const node = Ipfs({ repo: '/test_repo/ipfs' })
+      const node = Ipfs({ repo: './ipfs' })
       node.on('ready', () => resolve(node))
       node.on('error', reject)
     })
     orbitdb = await OrbitDB.createInstance(
       ipfs,
-      { directory: '../test_repo/orbitdb' }
+      { directory: './orbitdb' }
     )
+  })
+
+  after(async () => {
+    await orbitdb.disconnect()
+    await ipfs.stop()
+    wtf.dump()
+    setTimeout(wtf.dump, 3000)
+    setTimeout(wtf.dump, 30000)
+    // console.log(process._getActiveHandles())
   })
 
   describe('.mount', function () {
@@ -42,7 +54,8 @@ describe('EncryptedDocstore', function () {
         aesKey
       )
       const docstore = await orbitdb.docs(encAddr, options)
-      await EncDocstore.mount(docstore, aesKey)
+      const encDocstore = await EncDocstore.mount(docstore, aesKey)
+      await encDocstore._docstore.drop()
     })
   })
 
@@ -79,8 +92,7 @@ describe('EncryptedDocstore', function () {
   describe('AesKey methods', function () {
     let aesKey
 
-    const mountEncDocstore = async () => {
-      if (!aesKey) throw new Error('aesKey was not defined')
+    afterEach(async () => {
       const encAddr = await EncDocstore.determineAddress(
         orbitdb,
         { name, type, options },
@@ -90,43 +102,34 @@ describe('EncryptedDocstore', function () {
         await orbitdb.docs(encAddr, options),
         aesKey
       )
+      await encDocstore._docstore.close()
       await encDocstore._docstore.drop()
-    }
-
-    describe('.generateKey', function () {
-      it('generates usuable key', async () => {
-        aesKey = await EncDocstore.generateKey()
-        await mountEncDocstore()
-      })
     })
 
-    describe('.deriveKey', function () {
-      it('derives usuable key', async () => {
-        aesKey = await EncDocstore.deriveKey(bytes, salt)
-        await mountEncDocstore()
-      })
+    it('generate usuable key', async () => {
+      aesKey = await EncDocstore.generateKey()
     })
 
-    describe('.importKey', function () {
-      it('imports usuable key', async () => {
-        aesKey = await EncDocstore.importKey(rawKey)
-        await mountEncDocstore()
-      })
+    it('derive usuable key', async () => {
+      aesKey = await EncDocstore.deriveKey(bytes, salt)
     })
 
-    describe('.exportKey', function () {
-      it('exports raw aes key', async () => {
-        aesKey = await EncDocstore.importKey(rawKey)
-        const exported = await EncDocstore.exportKey(aesKey)
-        assert.deepStrictEqual(exported, rawKey)
-      })
+    it('import usuable key', async () => {
+      aesKey = await EncDocstore.importKey(rawKey)
+    })
+
+    it('export raw aes key', async () => {
+      aesKey = await EncDocstore.importKey(rawKey)
+      const exported = await EncDocstore.exportKey(aesKey)
+      assert.deepStrictEqual(exported, rawKey)
+      aesKey = await EncDocstore.importKey(rawKey)
     })
   })
 
-  // tests docstore methods using modified tests from the official repo!
-  // https://github.com/orbitdb/orbit-db/blob/master/test/docstore.test.js
+  // // tests docstore methods using modified tests from the official repo!
+  // // https://github.com/orbitdb/orbit-db/blob/master/test/docstore.test.js
   describe('Docstore methods', function () {
-    describe(`Default index '_id'`, function () {
+    describe('Default index \'_id\'', function () {
       let aesKey, encDocstore
 
       beforeEach(async () => {
