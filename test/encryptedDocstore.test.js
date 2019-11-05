@@ -5,9 +5,9 @@ const EncDocstore = require('../src/encryptedDocstore')
 const Ipfs = require('@tabcat/ipfs-bundle-t')
 const OrbitDB = require('orbit-db')
 const crypto = require('@tabcat/peer-account-crypto')
-const wtf = require('wtfnode')
+// const wtf = require('wtfnode')
 
-wtf.setLogger('info', console.log)
+// wtf.setLogger('info', console.log)
 
 describe('EncryptedDocstore', function () {
   this.timeout(30000)
@@ -39,10 +39,9 @@ describe('EncryptedDocstore', function () {
   after(async () => {
     await orbitdb.disconnect()
     await ipfs.stop()
-    wtf.dump()
-    setTimeout(wtf.dump, 3000)
-    setTimeout(wtf.dump, 30000)
-    // console.log(process._getActiveHandles())
+    console.log('UNFORTUNATELY TESTS DO NOT EXIT ON THEIR OWN')
+    // wtf.dump()
+    // setTimeout(wtf.dump, 3000)
   })
 
   describe('.mount', function () {
