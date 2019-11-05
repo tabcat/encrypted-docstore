@@ -1,6 +1,6 @@
 {
   "name": "@tabcat/encrypted-docstore",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "mount encrypted docstores with a key",
   "repository": {
     "type": "git",
