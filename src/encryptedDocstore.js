@@ -191,8 +191,12 @@ class EncryptedDocstore {
     }
     // if a deletion failed this will clean it up old docs
     // only return first deletion to keep same api as docstore
-    return Promise.all(
-      matches.map(res => this._docstore.del(res.external[this._indexBy]))
+    return matches.reduce(
+      async (a, c) => [
+        ...await a,
+        this._docstore.del(c.external[this._indexBy])
+      ],
+      []
     ).then(arr => arr[0])
   }
 
