@@ -78,11 +78,11 @@ class EncryptedDocstore {
     if (!orbitdb || !dbConfig || !aesKey) {
       throw new Error('orbitdb, dbConfig and aesKey must be defined')
     }
-    if (dbConfig.type !== 'docstore') {
+    if (dbConfig.type !== 'docstore' && dbConfig.type !== undefined) {
       throw new Error('dbConfig type must be docstore')
     }
-    if (!dbConfig.name) throw new Error('')
-    const { name, type, options } = dbConfig
+    const { name, options } = dbConfig
+    const type = 'docstore'
     const root = (await orbitdb.determineAddress(name, type, options)).root
     const decodedRoot = bs58.decode(root)
     try {

@@ -24,7 +24,7 @@ const EncryptedDocstore = require('@tabcat/encrypted-docstore')
 const aesKey = EncryptedDocstore.generateKey()
 
 // create the docstore with orbitdb:
-const dbConfig = { name:'asdf', type:'docstore', options: {} }
+const dbConfig = { name:'asdf', options: {} } // type will always be 'docstore'
 const encAddr = await EncryptedDocstore.determineAddress(orbitdb, dbConfig, aesKey)
 const docstore = await orbitdb.docs(encAddr, dbConfig.options)
 
@@ -34,7 +34,7 @@ const encDocstore = await EncryptedDocstore.mount(docstore, aesKey)
 ```
 
 ## API <br/>
->EncDoc = EncryptedDocstore 
+>EncDoc = EncryptedDocstore
 
 ### Static Methods:
 #### EncDoc.mount(docstore, aesKey)
@@ -48,7 +48,7 @@ returns a promise that resolves to an instance of EncDoc
 >determine the docstore address for the encryptedDocstore, this is adding a way to check the aesKey against the db name
 
 *orbitdb:* an instance of OrbitDB<br/>
-*dbConfig:* an object containing name, type and options for an orbit store settings<br/>
+*dbConfig:* an object containing name and options for an orbit store settings<br/>
 *aesKey:* instance of AesKey from generateKey, deriveKey, or importKey static methods.<br/>
 
 returns a promise that resolves to an instance of orbit address
@@ -106,7 +106,7 @@ no visible differences
 
 differences:
   - is an async function
-  - when calling with option fullOp: 
+  - when calling with option fullOp:
     + the payload.value is the decrypted/decapsulated doc.
     + anything in the fullOp entry relating to hashing the real payload.value will not match the payload.value
   - when not calling with option fullOp:
