@@ -5,10 +5,6 @@ create and mount encrypted [orbit-db](https://github.com/orbitdb/orbit-db/) docs
 
 NOTE: version 3.0.0 changes how EncryptedDocstore determines the orbitdb address, this is a breaking change. Some changes have been made to the api as well, mostly naming.
 
-TODO: </br>
-extend the docstore instead of wrap it. </br>
-make every entry iv deterministic? based off anything unique besides orbit id and clock with the goal of having duplicate entries from different nodes collapse.
-
 ## Usage
 install with npm:
 ```
